@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "setup": "prisma generate && prisma db push",
+    "postinstall": "prisma generate",
     "worker": "tsx src/workers/index.ts",
     "watch": "tsx src/workers/index.ts",
     "tunnel": "ngrok http 3000",

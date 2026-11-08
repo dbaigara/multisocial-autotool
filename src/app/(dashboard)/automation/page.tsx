@@ -27,7 +27,7 @@ export default function AutomationPage() {
   // Modal create rule
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [platform, setPlatform] = useState<"INSTAGRAM" | "YOUTUBE">("INSTAGRAM");
+  const [platform, setPlatform] = useState<"INSTAGRAM" | "YOUTUBE" | "TELEGRAM">("INSTAGRAM");
   const [keyword, setKeyword] = useState("");
   const [matchType, setMatchType] = useState<"CONTAINS" | "EXACT">("CONTAINS");
   const [publicReplyText, setPublicReplyText] = useState("");
@@ -38,7 +38,7 @@ export default function AutomationPage() {
 
   // Live Simulator state
   const [simText, setSimText] = useState("Здравствуйте! Какая цена курса?");
-  const [simPlatform, setSimPlatform] = useState<"INSTAGRAM" | "YOUTUBE">("INSTAGRAM");
+  const [simPlatform, setSimPlatform] = useState<"INSTAGRAM" | "YOUTUBE" | "TELEGRAM">("INSTAGRAM");
   const [simLoading, setSimLoading] = useState(false);
   const [simResult, setSimResult] = useState<any>(null);
 
@@ -183,6 +183,7 @@ export default function AutomationPage() {
                 onChange={(e) => setSimPlatform(e.target.value as any)}
                 className="w-full text-xs px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-indigo-500"
               >
+                <option value="TELEGRAM">Telegram (Auto-Reply)</option>
                 <option value="INSTAGRAM">Instagram (Comment-to-DM)</option>
                 <option value="YOUTUBE">YouTube (Public Reply)</option>
               </select>
@@ -307,7 +308,9 @@ export default function AutomationPage() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 text-[11px] font-semibold text-white border border-slate-700">
-                            {rule.platform === "INSTAGRAM" ? (
+                            {rule.platform === "TELEGRAM" ? (
+                              <Send className="w-3.5 h-3.5 text-sky-400" />
+                            ) : rule.platform === "INSTAGRAM" ? (
                               <Instagram className="w-3.5 h-3.5 text-pink-400" />
                             ) : (
                               <Youtube className="w-3.5 h-3.5 text-red-400" />
@@ -409,31 +412,44 @@ export default function AutomationPage() {
 
             <form onSubmit={handleCreateRule} className="space-y-4 pt-4">
               {/* Platform */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPlatform("TELEGRAM")}
+                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                    platform === "TELEGRAM"
+                      ? "bg-sky-600/20 border-sky-500 text-white"
+                      : "bg-slate-800 border-slate-700 text-slate-400"
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5 text-sky-400" />
+                  Telegram
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setPlatform("INSTAGRAM")}
-                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${
+                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
                     platform === "INSTAGRAM"
                       ? "bg-gradient-to-r from-pink-600/20 to-purple-600/20 border-pink-500 text-white"
                       : "bg-slate-800 border-slate-700 text-slate-400"
                   }`}
                 >
-                  <Instagram className="w-4 h-4 text-pink-400" />
-                  Instagram (DM)
+                  <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                  Instagram
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPlatform("YOUTUBE")}
-                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${
+                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
                     platform === "YOUTUBE"
                       ? "bg-red-600/20 border-red-500 text-white"
                       : "bg-slate-800 border-slate-700 text-slate-400"
                   }`}
                 >
-                  <Youtube className="w-4 h-4 text-red-400" />
-                  YouTube (Ответ)
+                  <Youtube className="w-3.5 h-3.5 text-red-400" />
+                  YouTube
                 </button>
               </div>
 

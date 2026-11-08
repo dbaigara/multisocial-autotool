@@ -218,12 +218,14 @@ export default function PostsPage() {
 
                   {/* Account Badge */}
                   <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700 text-[11px] text-white">
-                    {post.socialAccount?.platform === "INSTAGRAM" ? (
+                    {post.socialAccount?.platform === "TELEGRAM" ? (
+                      <Send className="w-3.5 h-3.5 text-sky-400" />
+                    ) : post.socialAccount?.platform === "INSTAGRAM" ? (
                       <Instagram className="w-3.5 h-3.5 text-pink-400" />
                     ) : (
                       <Youtube className="w-3.5 h-3.5 text-red-400" />
                     )}
-                    <span>@{post.socialAccount?.username || "account"}</span>
+                    <span>@{post.socialAccount?.username || post.socialAccount?.accountName || "account"}</span>
                   </div>
                 </div>
 
@@ -243,7 +245,9 @@ export default function PostsPage() {
                   {post.platformPostId && (
                     <a
                       href={
-                        post.socialAccount?.platform === "YOUTUBE"
+                        post.socialAccount?.platform === "TELEGRAM"
+                          ? `https://t.me/${(post.socialAccount?.username || "").replace("@", "")}`
+                          : post.socialAccount?.platform === "YOUTUBE"
                           ? `https://www.youtube.com/shorts/${post.platformPostId}`
                           : `https://www.instagram.com/p/${post.platformPostId}/`
                       }
@@ -252,7 +256,7 @@ export default function PostsPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-medium transition self-start"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Открыть на {post.socialAccount?.platform === "YOUTUBE" ? "YouTube" : "Instagram"}</span>
+                      <span>Открыть на {post.socialAccount?.platform === "TELEGRAM" ? "Telegram" : post.socialAccount?.platform === "YOUTUBE" ? "YouTube" : "Instagram"}</span>
                     </a>
                   )}
 
@@ -309,7 +313,7 @@ export default function PostsPage() {
                   >
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
-                        {acc.platform === "INSTAGRAM" ? "📸 Instagram" : "▶️ YouTube"} — @{acc.username || acc.accountName}
+                        {acc.platform === "TELEGRAM" ? "✈️ Telegram" : acc.platform === "INSTAGRAM" ? "📸 Instagram" : "▶️ YouTube"} — @{acc.username || acc.accountName}
                       </option>
                     ))}
                   </select>

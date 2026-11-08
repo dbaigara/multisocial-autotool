@@ -38,6 +38,32 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(account);
+  } else if (platform === "TELEGRAM") {
+    const account = await prisma.socialAccount.upsert({
+      where: {
+        workspaceId_platform_platformAccountId: {
+          workspaceId: targetWorkspaceId,
+          platform: "TELEGRAM",
+          platformAccountId: "demo_tg_channel_789",
+        },
+      },
+      create: {
+        workspaceId: targetWorkspaceId,
+        platform: "TELEGRAM",
+        platformAccountId: "demo_tg_channel_789",
+        accountName: "Demo Telegram Channel",
+        username: "@demo_creator_channel",
+        profilePictureUrl: "https://telegram.org/img/t_logo.png",
+        accessToken: "demo_bot_token_123456:ABC-DEF",
+        pageId: "-1001234567890",
+      },
+      update: {
+        accountName: "Demo Telegram Channel",
+        username: "@demo_creator_channel",
+      },
+    });
+
+    return NextResponse.json(account);
   } else if (platform === "YOUTUBE") {
     const account = await prisma.socialAccount.upsert({
       where: {
@@ -61,6 +87,32 @@ export async function POST(req: Request) {
       update: {
         accountName: "Tech & Growth YouTube Channel",
         username: "tech_growth_shorts",
+      },
+    });
+
+    return NextResponse.json(account);
+  } else if (platform === "TELEGRAM") {
+    const account = await prisma.socialAccount.upsert({
+      where: {
+        workspaceId_platform_platformAccountId: {
+          workspaceId: targetWorkspaceId,
+          platform: "TELEGRAM",
+          platformAccountId: "demo_tg_channel_789",
+        },
+      },
+      create: {
+        workspaceId: targetWorkspaceId,
+        platform: "TELEGRAM",
+        platformAccountId: "demo_tg_channel_789",
+        accountName: "Demo Telegram Channel",
+        username: "@demo_creator_channel",
+        profilePictureUrl: "https://telegram.org/img/t_logo.png",
+        accessToken: "demo_bot_token_123456:ABC-DEF",
+        pageId: "-1001234567890",
+      },
+      update: {
+        accountName: "Demo Telegram Channel",
+        username: "@demo_creator_channel",
       },
     });
 

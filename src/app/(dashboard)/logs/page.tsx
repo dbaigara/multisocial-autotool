@@ -77,7 +77,9 @@ export default function LogsPage() {
               >
                 <div className="flex items-start gap-3.5 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
-                    {log.platform === "INSTAGRAM" ? (
+                    {log.platform === "TELEGRAM" ? (
+                      <Send className="w-5 h-5 text-sky-400" />
+                    ) : log.platform === "INSTAGRAM" ? (
                       <Instagram className="w-5 h-5 text-pink-400" />
                     ) : (
                       <Youtube className="w-5 h-5 text-red-400" />

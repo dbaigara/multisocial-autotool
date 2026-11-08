@@ -1,47 +1,10 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
-}
-
-enum Role {
-  OWNER
-  ADMIN
-  MEMBER
-}
-
-enum Platform {
-  INSTAGRAM
-  YOUTUBE
-}
-
-enum PostStatus {
-  DRAFT
-  SCHEDULED
-  PUBLISHED
-  FAILED
-}
-
-enum MediaType {
-  IMAGE
-  VIDEO
-  REEL
-  SHORT
-}
-
-enum MatchType {
-  EXACT
-  CONTAINS
-}
-
-enum SubscriptionTier {
-  FREE
-  CREATOR
-  PRO
-  AGENCY
 }
 
 model User {
@@ -68,12 +31,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String  @map("provider_account_id")
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -105,7 +68,7 @@ model Workspace {
   id                   String           @id @default(cuid())
   name                 String
   ownerId              String           @map("owner_id")
-  subscriptionTier     SubscriptionTier @default(FREE) @map("subscription_tier")
+  subscriptionTier     String           @default("FREE") @map("subscription_tier")
   stripeCustomerId     String?          @map("stripe_customer_id")
   stripeSubscriptionId String?          @map("stripe_subscription_id")
   localContentPath     String?          @default("./content_studio") @map("local_content_path")
@@ -128,7 +91,7 @@ model WorkspaceMember {
   id          String    @id @default(cuid())
   workspaceId String    @map("workspace_id")
   userId      String    @map("user_id")
-  role        Role      @default(MEMBER)
+  role        String    @default("MEMBER")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
@@ -142,15 +105,15 @@ model WorkspaceMember {
 model SocialAccount {
   id                 String    @id @default(cuid())
   workspaceId        String    @map("workspace_id")
-  platform           Platform
+  platform           String
   platformAccountId  String    @map("platform_account_id")
   accountName        String?   @map("account_name")
   username           String?
   profilePictureUrl  String?   @map("profile_picture_url")
-  accessToken        String    @db.Text @map("access_token")
-  refreshToken       String?   @db.Text @map("refresh_token")
+  accessToken        String    @map("access_token")
+  refreshToken       String?   @map("refresh_token")
   tokenExpiresAt     DateTime? @map("token_expires_at")
-  pageId             String?   @map("page_id") // Facebook Page ID connected to Instagram
+  pageId             String?   @map("page_id") // Facebook Page ID or Telegram Channel ID
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -167,13 +130,13 @@ model Post {
   workspaceId     String     @map("workspace_id")
   socialAccountId String     @map("social_account_id")
   mediaUrl        String?    @map("media_url")
-  localFilePath   String?    @map("local_file_path") // Path on local disk if produced locally
-  mediaType       MediaType  @default(IMAGE) @map("media_type")
-  caption         String     @db.Text
+  localFilePath   String?    @map("local_file_path")
+  mediaType       String     @default("IMAGE") @map("media_type")
+  caption         String
   scheduledFor    DateTime?  @map("scheduled_for")
-  status          PostStatus @default(DRAFT)
+  status          String     @default("DRAFT")
   platformPostId  String?    @map("platform_post_id")
-  errorMessage    String?    @db.Text @map("error_message")
+  errorMessage    String?    @map("error_message")
   publishedAt     DateTime?  @map("published_at")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
@@ -188,13 +151,13 @@ model AutomationRule {
   id              String         @id @default(cuid())
   workspaceId     String         @map("workspace_id")
   socialAccountId String?        @map("social_account_id")
-  platform        Platform
-  keyword         String // Can be comma-separated list of keywords
-  matchType       MatchType      @default(CONTAINS) @map("match_type")
-  publicReplyText String?        @db.Text @map("public_reply_text")
-  dmText          String?        @db.Text @map("dm_text") // Instagram Direct Message
-  buttonText      String?        @map("button_text") // Optional CTA button title for IG DM
-  buttonUrl       String?        @map("button_url") // Optional CTA button URL for IG DM
+  platform        String
+  keyword         String
+  matchType       String         @default("CONTAINS") @map("match_type")
+  publicReplyText String?        @map("public_reply_text")
+  dmText          String?        @map("dm_text")
+  buttonText      String?        @map("button_text")
+  buttonUrl       String?        @map("button_url")
   isActive        Boolean        @default(true) @map("is_active")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
@@ -210,16 +173,16 @@ model AutomationLog {
   id              String   @id @default(cuid())
   workspaceId     String   @map("workspace_id")
   ruleId          String?  @map("rule_id")
-  platform        Platform
+  platform        String
   postId          String?  @map("post_id")
   commentId       String   @map("comment_id")
   authorUsername  String   @map("author_username")
   authorId        String?  @map("author_id")
-  commentText     String   @db.Text @map("comment_text")
+  commentText     String   @map("comment_text")
   publicReplySent Boolean  @default(false) @map("public_reply_sent")
   dmSent          Boolean  @default(false) @map("dm_sent")
-  status          String   @default("SUCCESS") // SUCCESS, PARTIAL, FAILED
-  errorMessage    String?  @db.Text @map("error_message")
+  status          String   @default("SUCCESS")
+  errorMessage    String?  @map("error_message")
   createdAt       DateTime @default(now()) @map("created_at")
 
   workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

@@ -399,7 +399,9 @@ export default function StudioPage() {
                           <div className="flex items-center gap-2">
                             <a
                               href={
-                                file.existingPost.socialAccount?.platform === "YOUTUBE"
+                                file.existingPost.socialAccount?.platform === "TELEGRAM"
+                                  ? `https://t.me/${(file.existingPost.socialAccount?.username || "").replace("@", "")}`
+                                  : file.existingPost.socialAccount?.platform === "YOUTUBE"
                                   ? `https://www.youtube.com/shorts/${file.existingPost.platformPostId}`
                                   : `https://www.instagram.com/p/${file.existingPost.platformPostId}/`
                               }
@@ -465,7 +467,7 @@ export default function StudioPage() {
                 >
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
-                      {acc.platform === "INSTAGRAM" ? "📸 Instagram" : "▶️ YouTube"} — @{acc.username || acc.accountName}
+                      {acc.platform === "TELEGRAM" ? "✈️ Telegram" : acc.platform === "INSTAGRAM" ? "📸 Instagram" : "▶️ YouTube"} — @{acc.username || acc.accountName}
                     </option>
                   ))}
                 </select>
