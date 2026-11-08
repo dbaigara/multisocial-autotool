@@ -9,7 +9,7 @@ export interface DiscoveredMediaFile {
   absolutePath: string;
   sizeBytes: number;
   sizeFormatted: string;
-  mediaType: "IMAGE" | "VIDEO" | "REEL" | "SHORT";
+  mediaType: "IMAGE" | "VIDEO" | "REEL" | "SHORT" | "STORY";
   caption: string;
   title?: string;
   targetPlatform?: "INSTAGRAM" | "YOUTUBE" | "TELEGRAM" | "ALL";
@@ -63,7 +63,7 @@ export function parseCaptionFile(rawText: string) {
       }
     } else if (trimmed.startsWith("--type:")) {
       const t = trimmed.replace("--type:", "").trim().toUpperCase();
-      if (["IMAGE", "VIDEO", "REEL", "SHORT"].includes(t)) {
+      if (["IMAGE", "VIDEO", "REEL", "SHORT", "STORY"].includes(t)) {
         mediaType = t as any;
       }
     } else if (trimmed.startsWith("--title:")) {

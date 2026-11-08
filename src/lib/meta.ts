@@ -103,23 +103,28 @@ export class MetaClient {
   async publishMedia(options: {
     igUserId: string;
     accessToken: string;
-    caption: string;
+    caption?: string;
     mediaUrl: string;
     isReel?: boolean;
+    isStory?: boolean;
   }): Promise<{ id: string }> {
-    const { igUserId, accessToken, caption, mediaUrl, isReel } = options;
+    const { igUserId, accessToken, caption, mediaUrl, isReel, isStory } = options;
 
     // 1. Create Media Container
     const containerParams = new URLSearchParams({
       access_token: accessToken,
-      caption,
     });
 
-    if (isReel) {
+    if (isStory) {
+      containerParams.append("media_type", "STORIES");
+      containerParams.append("video_url", mediaUrl);
+    } else if (isReel) {
       containerParams.append("media_type", "REELS");
       containerParams.append("video_url", mediaUrl);
+      if (caption) containerParams.append("caption", caption);
     } else {
       containerParams.append("image_url", mediaUrl);
+      if (caption) containerParams.append("caption", caption);
     }
 
     const containerRes = await fetch(`${GRAPH_BASE_URL}/${igUserId}/media?${containerParams.toString()}`, {
@@ -132,11 +137,11 @@ export class MetaClient {
 
     const containerId = containerData.id;
 
-    // For video/reels, poll until container status is FINISHED
-    if (isReel) {
+    // For video/reels/stories, poll until container status is FINISHED
+    if (isReel || isStory) {
       let isReady = false;
       let attempts = 0;
-      while (!isReady && attempts < 20) {
+      while (!isReady && attempts < 25) {
         await new Promise((r) => setTimeout(r, 3000));
         attempts++;
 

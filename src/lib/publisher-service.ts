@@ -77,13 +77,15 @@ export async function executePublishJob(payload: PublishJobPayload): Promise<voi
       if (!post.mediaUrl) {
         throw new Error("Instagram requires a reachable public media URL (image or video)");
       }
+      const isStory = post.mediaType === "STORY";
       const isReel = post.mediaType === "REEL" || post.mediaType === "VIDEO";
       const result = await metaClient.publishMedia({
         igUserId: account.platformAccountId,
         accessToken: account.accessToken,
-        caption: post.caption,
+        caption: isStory ? "" : post.caption,
         mediaUrl: post.mediaUrl,
-        isReel,
+        isReel: !isStory && isReel,
+        isStory,
       });
       platformPostId = result.id;
     }
