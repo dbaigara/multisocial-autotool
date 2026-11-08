@@ -33,7 +33,8 @@ export class MetaClient {
   /**
    * Generates Facebook Login OAuth URL with permissions required for Instagram
    */
-  getOAuthUrl(state: string): string {
+  getOAuthUrl(state: string, customRedirectUri?: string): string {
+    const redirect = customRedirectUri || this.redirectUri;
     const scopes = [
       "instagram_basic",
       "instagram_content_publish",
@@ -45,16 +46,17 @@ export class MetaClient {
     ].join(",");
 
     return `https://www.facebook.com/${GRAPH_API_VERSION}/dialog/oauth?client_id=${this.appId}&redirect_uri=${encodeURIComponent(
-      this.redirectUri
+      redirect
     )}&scope=${encodeURIComponent(scopes)}&response_type=code&state=${encodeURIComponent(state)}`;
   }
 
   /**
    * Exchanges authorization code for a short-lived user access token
    */
-  async exchangeCodeForToken(code: string): Promise<{ access_token: string; expires_in?: number }> {
+  async exchangeCodeForToken(code: string, customRedirectUri?: string): Promise<{ access_token: string; expires_in?: number }> {
+    const redirect = customRedirectUri || this.redirectUri;
     const url = `${GRAPH_BASE_URL}/oauth/access_token?client_id=${this.appId}&redirect_uri=${encodeURIComponent(
-      this.redirectUri
+      redirect
     )}&client_secret=${this.appSecret}&code=${code}`;
 
     const res = await fetch(url);

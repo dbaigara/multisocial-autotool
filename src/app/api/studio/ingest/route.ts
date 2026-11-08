@@ -1,49 +1,41 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ingestLocalMediaFile, scanContentFolder } from "@/lib/local-pipeline";
+import { getActiveWorkspace } from "@/lib/workspace-service";
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const body = await req.json();
-  const {
-    workspaceId,
-    filePath,
-    preferredAccountId,
-    customCaption,
-    scheduledFor,
-    publishNow,
-  } = body;
-
-  const targetWorkspaceId = workspaceId || (session.user as any).workspaceId;
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: targetWorkspaceId },
-  });
-
-  if (!workspace) {
-    return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
-  }
-
-  const contentDir = workspace.localContentPath || "./content_studio";
-  const files = await scanContentFolder(contentDir, targetWorkspaceId);
-  const targetFile = files.find((f) => f.absolutePath === filePath);
-
-  if (!targetFile) {
-    return NextResponse.json({ error: "File not found in content studio" }, { status: 404 });
-  }
-
-  // Apply overrides if provided
-  if (customCaption) targetFile.caption = customCaption;
-  if (scheduledFor) targetFile.scheduledFor = new Date(scheduledFor);
-
   try {
+    const { workspaceId } = await getActiveWorkspace(req);
+    const body = await req.json();
+    const {
+      filePath,
+      preferredAccountId,
+      customCaption,
+      scheduledFor,
+      publishNow,
+    } = body;
+
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    }
+
+    const contentDir = workspace.localContentPath || "./content_studio";
+    const files = await scanContentFolder(contentDir, workspaceId);
+    const targetFile = files.find((f) => f.absolutePath === filePath);
+
+    if (!targetFile) {
+      return NextResponse.json({ error: "File not found in content studio" }, { status: 404 });
+    }
+
+    if (customCaption) targetFile.caption = customCaption;
+    if (scheduledFor) targetFile.scheduledFor = new Date(scheduledFor);
+
     const post = await ingestLocalMediaFile({
-      workspaceId: targetWorkspaceId,
+      workspaceId,
       file: targetFile,
       preferredAccountId,
       autoSchedule: !publishNow && !scheduledFor,

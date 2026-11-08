@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { telegramClient } from "@/lib/telegram";
+import { getActiveWorkspace } from "@/lib/workspace-service";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { botToken, chatId, workspaceId } = await req.json();
-    const targetWorkspaceId = workspaceId || (session.user as any).workspaceId;
+    const { workspaceId } = await getActiveWorkspace(req);
+    const body = await req.json();
+    const { botToken, chatId } = body;
 
     if (!botToken || !chatId) {
       return NextResponse.json(
@@ -21,30 +16,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. Verify Bot Token
+    // 1. Verify Bot Token with Telegram API
     const botInfo = await telegramClient.getMe(botToken.trim());
 
-    // 2. Verify Chat / Channel Access
+    // 2. Verify Chat / Channel Access with Telegram API
     const chatInfo = await telegramClient.getChat(botToken.trim(), chatId.trim());
 
     const channelTitle = chatInfo.title || botInfo.first_name || "Telegram Channel";
     const channelUsername = chatInfo.username || botInfo.username;
     const platformAccountId = String(chatInfo.id);
 
-    // 3. Upsert Social Account
+    // 3. Upsert Social Account into active workspace
     const account = await prisma.socialAccount.upsert({
       where: {
         workspaceId_platform_platformAccountId: {
-          workspaceId: targetWorkspaceId,
+          workspaceId,
           platform: "TELEGRAM",
           platformAccountId,
         },
       },
       create: {
-        workspaceId: targetWorkspaceId,
+        workspaceId,
         platform: "TELEGRAM",
         platformAccountId,
-        pageId: String(chatInfo.id), // store channel chat_id
+        pageId: String(chatInfo.id),
         accountName: channelTitle,
         username: channelUsername ? `@${channelUsername}` : `id_${chatInfo.id}`,
         profilePictureUrl: "https://telegram.org/img/t_logo.png",
@@ -66,7 +61,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("[TelegramConnect] Error:", err);
     return NextResponse.json(
-      { error: err.message || "Не удалось подключить Telegram-канал. Проверьте токен и права бота (бот должен быть админом канала)." },
+      { error: err.message || "Не удалось подключить Telegram-канал. Проверьте токен и убедитесь, что бот добавлен администратором в канал." },
       { status: 400 }
     );
   }

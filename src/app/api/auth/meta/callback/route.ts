@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { metaClient } from "@/lib/meta";
+import { getAppBaseUrl } from "@/lib/workspace-service";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
   const stateStr = searchParams.get("state");
   const error = searchParams.get("error_description") || searchParams.get("error");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppBaseUrl(req);
 
   if (error) {
     console.error("Meta OAuth error:", error);
@@ -22,13 +23,14 @@ export async function GET(req: Request) {
   try {
     const state = JSON.parse(stateStr);
     const workspaceId = state.workspaceId;
+    const redirectUri = state.redirectUri;
 
     if (!workspaceId) {
       return NextResponse.redirect(`${appUrl}/accounts?error=Invalid+workspace+state`);
     }
 
-    // 1. Exchange code for short-lived token
-    const tokenRes = await metaClient.exchangeCodeForToken(code);
+    // 1. Exchange code for short-lived token using matching redirectUri
+    const tokenRes = await metaClient.exchangeCodeForToken(code, redirectUri);
 
     // 2. Exchange for long-lived token (60 days)
     const longLivedRes = await metaClient.getLongLivedToken(tokenRes.access_token);
@@ -66,7 +68,7 @@ export async function GET(req: Request) {
           accountName: ig.name || page.name,
           username: ig.username,
           profilePictureUrl: ig.profile_picture_url,
-          accessToken: longLivedToken, // User access token with IG permissions or page token
+          accessToken: longLivedToken,
           tokenExpiresAt: expiresAt,
           pageId: page.id,
         },

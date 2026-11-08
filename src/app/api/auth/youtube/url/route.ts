@@ -1,27 +1,24 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { youtubeClient } from "@/lib/youtube";
+import { getActiveWorkspace, getAppBaseUrl } from "@/lib/workspace-service";
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Необходима авторизация" }, { status: 401 });
+  try {
+    const { workspaceId, userId } = await getActiveWorkspace(req);
+    const appUrl = getAppBaseUrl(req);
+    const redirectUri = `${appUrl}/api/auth/youtube/callback`;
+
+    const state = JSON.stringify({
+      workspaceId,
+      userId,
+      redirectUri,
+      random: Math.random().toString(36).substring(7),
+    });
+
+    const url = youtubeClient.getOAuthUrl(state, redirectUri);
+    return NextResponse.json({ url });
+  } catch (err: any) {
+    console.error("[YouTube URL] Error:", err);
+    return NextResponse.json({ error: err.message || "Failed to generate YouTube URL" }, { status: 500 });
   }
-
-  const { searchParams } = new URL(req.url);
-  const workspaceId = searchParams.get("workspaceId") || (session.user as any).workspaceId;
-
-  if (!workspaceId) {
-    return NextResponse.json({ error: "Воркспейс не указан" }, { status: 400 });
-  }
-
-  const state = JSON.stringify({
-    workspaceId,
-    userId: (session.user as any).id,
-    random: Math.random().toString(36).substring(7),
-  });
-
-  const url = youtubeClient.getOAuthUrl(state);
-  return NextResponse.json({ url });
 }

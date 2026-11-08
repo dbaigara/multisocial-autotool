@@ -26,7 +26,8 @@ export class YouTubeClient {
   /**
    * Generates Google OAuth 2.0 URL
    */
-  getOAuthUrl(state: string): string {
+  getOAuthUrl(state: string, customRedirectUri?: string): string {
+    const redirect = customRedirectUri || this.redirectUri;
     const scopes = [
       "https://www.googleapis.com/auth/userinfo.profile",
       "https://www.googleapis.com/auth/youtube",
@@ -36,7 +37,7 @@ export class YouTubeClient {
 
     const params = new URLSearchParams({
       client_id: this.clientId,
-      redirect_uri: this.redirectUri,
+      redirect_uri: redirect,
       response_type: "code",
       scope: scopes,
       access_type: "offline",
@@ -50,12 +51,13 @@ export class YouTubeClient {
   /**
    * Exchanges authorization code for access_token and refresh_token
    */
-  async exchangeCodeForToken(code: string): Promise<{
+  async exchangeCodeForToken(code: string, customRedirectUri?: string): Promise<{
     access_token: string;
     refresh_token?: string;
     expires_in: number;
     token_type: string;
   }> {
+    const redirect = customRedirectUri || this.redirectUri;
     const res = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -63,7 +65,7 @@ export class YouTubeClient {
         code,
         client_id: this.clientId,
         client_secret: this.clientSecret,
-        redirect_uri: this.redirectUri,
+        redirect_uri: redirect,
         grant_type: "authorization_code",
       }),
     });

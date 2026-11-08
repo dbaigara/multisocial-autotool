@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { youtubeClient } from "@/lib/youtube";
+import { getAppBaseUrl } from "@/lib/workspace-service";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
   const stateStr = searchParams.get("state");
   const error = searchParams.get("error");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppBaseUrl(req);
 
   if (error) {
     console.error("YouTube OAuth error:", error);
@@ -22,13 +23,14 @@ export async function GET(req: Request) {
   try {
     const state = JSON.parse(stateStr);
     const workspaceId = state.workspaceId;
+    const redirectUri = state.redirectUri;
 
     if (!workspaceId) {
       return NextResponse.redirect(`${appUrl}/accounts?error=Invalid+workspace+state`);
     }
 
-    // 1. Exchange code for tokens
-    const tokenRes = await youtubeClient.exchangeCodeForToken(code);
+    // 1. Exchange code for tokens using matching redirectUri
+    const tokenRes = await youtubeClient.exchangeCodeForToken(code, redirectUri);
     const expiresAt = new Date(Date.now() + (tokenRes.expires_in || 3600) * 1000);
 
     // 2. Fetch Channel details

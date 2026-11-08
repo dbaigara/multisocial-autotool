@@ -16,13 +16,15 @@ import {
   Sparkles,
   Send,
   Zap,
+  Check,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Telegram modal state
   const [showTgModal, setShowTgModal] = useState(false);
@@ -33,15 +35,39 @@ export default function AccountsPage() {
 
   useEffect(() => {
     loadAccounts();
+
+    // Check URL params for OAuth redirect results
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const successParam = params.get("success");
+      const errorParam = params.get("error");
+      if (successParam) {
+        showToast("success", `Аккаунт ${successParam.replace("_", " ")} успешно подключен!`);
+      } else if (errorParam) {
+        showToast("error", decodeURIComponent(errorParam));
+      }
+    }
   }, []);
+
+  function showToast(type: "success" | "error", text: string) {
+    setToastMessage({ type, text });
+    setTimeout(() => setToastMessage(null), 5000);
+  }
 
   async function loadAccounts() {
     try {
       setLoading(true);
       const res = await fetch("/api/accounts");
-      if (res.ok) setAccounts(await res.json());
-    } catch (e) {
+      if (res.ok) {
+        const data = await res.json();
+        setAccounts(Array.isArray(data) ? data : []);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast("error", err.error || "Не удалось загрузить аккаунты");
+      }
+    } catch (e: any) {
       console.error(e);
+      showToast("error", e.message || "Ошибка загрузки аккаунтов");
     } finally {
       setLoading(false);
     }
@@ -57,7 +83,7 @@ export default function AccountsPage() {
         alert(data.error || "Не удалось сгенерировать ссылку авторизации Meta");
       }
     } catch (e: any) {
-      alert(e.message);
+      alert(e.message || "Ошибка подключения Meta");
     }
   }
 
@@ -71,7 +97,7 @@ export default function AccountsPage() {
         alert(data.error || "Не удалось сгенерировать ссылку авторизации Google");
       }
     } catch (e: any) {
-      alert(e.message);
+      alert(e.message || "Ошибка подключения Google");
     }
   }
 
@@ -93,6 +119,7 @@ export default function AccountsPage() {
         setShowTgModal(false);
         setTgBotToken("");
         setTgChatId("");
+        showToast("success", data.message || "Telegram канал успешно подключен!");
         loadAccounts();
       } else {
         setTgError(data.error || "Ошибка подключения Telegram");
@@ -106,16 +133,23 @@ export default function AccountsPage() {
 
   async function connectDemo(platform: "INSTAGRAM" | "YOUTUBE" | "TELEGRAM") {
     try {
+      setDemoLoading(platform);
       const res = await fetch("/api/accounts/demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform }),
       });
+      const data = await res.json();
       if (res.ok) {
-        loadAccounts();
+        showToast("success", `Тестовый ${platform} аккаунт успешно активирован!`);
+        await loadAccounts();
+      } else {
+        alert(data.error || "Не удалось подключить демо-аккаунт");
       }
     } catch (e: any) {
-      alert(e.message);
+      alert(e.message || "Ошибка при подключении");
+    } finally {
+      setDemoLoading(null);
     }
   }
 
@@ -125,6 +159,7 @@ export default function AccountsPage() {
       const res = await fetch(`/api/accounts?id=${id}`, { method: "DELETE" });
       if (res.ok) {
         setAccounts(accounts.filter((a) => a.id !== id));
+        showToast("success", "Аккаунт успешно отключен");
       }
     } catch (e) {
       console.error(e);
@@ -146,6 +181,32 @@ export default function AccountsPage() {
       />
 
       <div className="p-6 max-w-7xl mx-auto space-y-8">
+        {/* Toast / Notification Banner */}
+        {toastMessage && (
+          <div
+            className={`p-4 rounded-2xl flex items-center justify-between text-xs font-medium animate-in fade-in ${
+              toastMessage.type === "success"
+                ? "bg-emerald-950/60 border border-emerald-500/40 text-emerald-300"
+                : "bg-red-950/60 border border-red-500/40 text-red-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {toastMessage.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              )}
+              <span>{toastMessage.text}</span>
+            </div>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="text-slate-400 hover:text-white ml-4 text-sm"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Connect Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Telegram Connect Card - Fast Dopamine */}
@@ -175,11 +236,12 @@ export default function AccountsPage() {
               </button>
               <button
                 onClick={() => connectDemo("TELEGRAM")}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5"
+                disabled={demoLoading === "TELEGRAM"}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5 disabled:opacity-50"
                 title="Добавить тестовый Telegram-канал"
               >
                 <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-                Тестовый TG
+                {demoLoading === "TELEGRAM" ? "..." : "Тестовый TG"}
               </button>
             </div>
           </div>
@@ -206,11 +268,12 @@ export default function AccountsPage() {
               </button>
               <button
                 onClick={() => connectDemo("INSTAGRAM")}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5"
+                disabled={demoLoading === "INSTAGRAM"}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5 disabled:opacity-50"
                 title="Добавить тестовый аккаунт для быстрой демонстрации"
               >
                 <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-                Тестовый IG
+                {demoLoading === "INSTAGRAM" ? "..." : "Тестовый IG"}
               </button>
             </div>
           </div>
@@ -237,11 +300,12 @@ export default function AccountsPage() {
               </button>
               <button
                 onClick={() => connectDemo("YOUTUBE")}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5"
+                disabled={demoLoading === "YOUTUBE"}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5 disabled:opacity-50"
                 title="Добавить тестовый канал для быстрой демонстрации"
               >
                 <Sparkles className="w-3.5 h-3.5 text-red-400" />
-                Тестовый YT
+                {demoLoading === "YOUTUBE" ? "..." : "Тестовый YT"}
               </button>
             </div>
           </div>
@@ -338,12 +402,16 @@ export default function AccountsPage() {
             </span>
           </div>
 
-          {accounts.length === 0 ? (
+          {loading ? (
+            <div className="py-12 text-center text-xs text-slate-400">
+              Загрузка аккаунтов...
+            </div>
+          ) : accounts.length === 0 ? (
             <div className="py-16 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/30">
               <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
               <h3 className="text-sm font-semibold text-white">Нет подключенных аккаунтов</h3>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                Подключите Telegram-канал за 30 секунд или добавьте тестовые аккаунты для мгновенного ознакомления.
+                Подключите Telegram-канал за 30 секунд или нажмите кнопку «Тестовый TG» / «Тестовый IG» выше для моментальной проверки!
               </p>
             </div>
           ) : (
@@ -429,7 +497,7 @@ export default function AccountsPage() {
               <div>
                 <span className="text-[10px] text-slate-500 uppercase block font-semibold">Callback URL:</span>
                 <code className="text-indigo-300">
-                  {typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}
+                  {typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}
                   /api/webhooks/instagram
                 </code>
               </div>
