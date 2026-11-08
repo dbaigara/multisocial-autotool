@@ -1,0 +1,229 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum Platform {
+  INSTAGRAM
+  YOUTUBE
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  REEL
+  SHORT
+}
+
+enum MatchType {
+  EXACT
+  CONTAINS
+}
+
+enum SubscriptionTier {
+  FREE
+  CREATOR
+  PRO
+  AGENCY
+}
+
+model User {
+  id            String            @id @default(cuid())
+  name          String?
+  email         String            @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  ownedWorkspaces Workspace[]     @relation("WorkspaceOwner")
+  memberships   WorkspaceMember[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Workspace {
+  id                   String           @id @default(cuid())
+  name                 String
+  ownerId              String           @map("owner_id")
+  subscriptionTier     SubscriptionTier @default(FREE) @map("subscription_tier")
+  stripeCustomerId     String?          @map("stripe_customer_id")
+  stripeSubscriptionId String?          @map("stripe_subscription_id")
+  localContentPath     String?          @default("./content_studio") @map("local_content_path")
+  autoScheduleEnabled  Boolean          @default(true) @map("auto_schedule_enabled")
+  dailyPostingTime     String?          @default("18:00") @map("daily_posting_time")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         WorkspaceMember[]
+  socialAccounts  SocialAccount[]
+  posts           Post[]
+  automationRules AutomationRule[]
+  automationLogs  AutomationLog[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String    @map("workspace_id")
+  userId      String    @map("user_id")
+  role        Role      @default(MEMBER)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model SocialAccount {
+  id                 String    @id @default(cuid())
+  workspaceId        String    @map("workspace_id")
+  platform           Platform
+  platformAccountId  String    @map("platform_account_id")
+  accountName        String?   @map("account_name")
+  username           String?
+  profilePictureUrl  String?   @map("profile_picture_url")
+  accessToken        String    @db.Text @map("access_token")
+  refreshToken       String?   @db.Text @map("refresh_token")
+  tokenExpiresAt     DateTime? @map("token_expires_at")
+  pageId             String?   @map("page_id") // Facebook Page ID connected to Instagram
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  posts           Post[]
+  automationRules AutomationRule[]
+
+  @@unique([workspaceId, platform, platformAccountId])
+  @@map("social_accounts")
+}
+
+model Post {
+  id              String     @id @default(cuid())
+  workspaceId     String     @map("workspace_id")
+  socialAccountId String     @map("social_account_id")
+  mediaUrl        String?    @map("media_url")
+  localFilePath   String?    @map("local_file_path") // Path on local disk if produced locally
+  mediaType       MediaType  @default(IMAGE) @map("media_type")
+  caption         String     @db.Text
+  scheduledFor    DateTime?  @map("scheduled_for")
+  status          PostStatus @default(DRAFT)
+  platformPostId  String?    @map("platform_post_id")
+  errorMessage    String?    @db.Text @map("error_message")
+  publishedAt     DateTime?  @map("published_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("posts")
+}
+
+model AutomationRule {
+  id              String         @id @default(cuid())
+  workspaceId     String         @map("workspace_id")
+  socialAccountId String?        @map("social_account_id")
+  platform        Platform
+  keyword         String // Can be comma-separated list of keywords
+  matchType       MatchType      @default(CONTAINS) @map("match_type")
+  publicReplyText String?        @db.Text @map("public_reply_text")
+  dmText          String?        @db.Text @map("dm_text") // Instagram Direct Message
+  buttonText      String?        @map("button_text") // Optional CTA button title for IG DM
+  buttonUrl       String?        @map("button_url") // Optional CTA button URL for IG DM
+  isActive        Boolean        @default(true) @map("is_active")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  socialAccount  SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  automationLogs AutomationLog[]
+
+  @@map("automation_rules")
+}
+
+model AutomationLog {
+  id              String   @id @default(cuid())
+  workspaceId     String   @map("workspace_id")
+  ruleId          String?  @map("rule_id")
+  platform        Platform
+  postId          String?  @map("post_id")
+  commentId       String   @map("comment_id")
+  authorUsername  String   @map("author_username")
+  authorId        String?  @map("author_id")
+  commentText     String   @db.Text @map("comment_text")
+  publicReplySent Boolean  @default(false) @map("public_reply_sent")
+  dmSent          Boolean  @default(false) @map("dm_sent")
+  status          String   @default("SUCCESS") // SUCCESS, PARTIAL, FAILED
+  errorMessage    String?  @db.Text @map("error_message")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  rule      AutomationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@map("automation_logs")
+}

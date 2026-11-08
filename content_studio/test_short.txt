@@ -1,0 +1,8 @@
+🚀 Тестовый запуск MultiSocial AutoTool!
+
+Автоматическая публикация первого вертикального видео напрямую в YouTube Shorts!
+Проверяем работу фонового пайплайна и очередей BullMQ.
+
+#Shorts #MultiSocial #Automation #Testing
+--platform: YOUTUBE
+--type: SHORT
